@@ -11,6 +11,7 @@ dropped in without touching the steps that use it.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, Mapping, Protocol, runtime_checkable
@@ -56,7 +57,7 @@ class LLMClient(Protocol):
     """
 
     name: str
-    """Short identifier for logging, e.g., ``"azure_openai/gpt-5.4"``."""
+    """Short identifier for logging, e.g., ``"llamacpp/qwen38-code"``."""
 
     def complete(
         self,
@@ -86,12 +87,32 @@ class LLMClient(Protocol):
 
 
 def open_client(model: str) -> LLMClient:
-    """A client for the named model.
+    """Open the configured LLM provider for ``model``.
 
-    The steps that call a model ask for one through here, so swapping in
-    another provider is a matter of returning a different implementation of
-    :class:`LLMClient` rather than editing those steps.
+    ``STUDENTSIM_LLM_PROVIDER`` selects the backend.  The fork defaults to
+    ``llamacpp`` so API-calling steps stay local unless Azure is explicitly
+    requested.
     """
-    from studentsim.baselines import AzureOpenAIClient
+    provider = os.environ.get("STUDENTSIM_LLM_PROVIDER", "llamacpp").strip().lower()
 
-    return AzureOpenAIClient(deployment=model)
+    if provider in {"llamacpp", "llama.cpp", "local"}:
+        from studentsim.baselines import LlamaCppClient
+
+        base_url = os.environ.get("LLAMACPP_BASE_URL", "http://127.0.0.1:8081/v1")
+        scoring_base_url = os.environ.get("LLAMACPP_SCORING_BASE_URL", base_url)
+        local_model = os.environ.get("LLAMACPP_MODEL", model or "qwen38-code")
+        return LlamaCppClient(
+            model=local_model,
+            base_url=base_url,
+            scoring_base_url=scoring_base_url,
+        )
+
+    if provider in {"azure", "azure_openai", "azure-openai"}:
+        from studentsim.baselines import AzureOpenAIClient
+
+        return AzureOpenAIClient(deployment=model)
+
+    raise ValueError(
+        "Unsupported STUDENTSIM_LLM_PROVIDER "
+        f"{provider!r}; expected 'llamacpp' or 'azure_openai'."
+    )

@@ -1,26 +1,30 @@
-"""Closed-source LLM baselines and the Maia2 chess KT baseline.
+"""LLM and knowledge-tracing baselines used by StudentSim.
 
-Three categories of baseline surface here:
+Four categories of baseline surface here:
 
-1. **Prompted closed models**, reached through Azure OpenAI, which implement
-   the :class:`studentsim.core.llm.LLMClient` Protocol.
-2. **The untrained base model**, scored for L2 and math. It is left out of
+1. **Local prompted models**, reached through an OpenAI-compatible llama.cpp
+   server and implementing :class:`studentsim.core.llm.LLMClient`.
+2. **Prompted closed models**, reached through Azure OpenAI and implementing
+   the same protocol.
+3. **The untrained base model**, scored for L2 and math. It is left out of
    chess, where an untrained model does not reliably emit a legal move in
    coordinate notation.
-3. **Maia2**: chess-only KT model (no guidance pathway).
+4. **Maia2**: chess-only KT model (no guidance pathway).
 
 The :class:`LLMClientSimulator` wraps any :class:`LLMClient` as a
 :class:`Simulator`, so the same fidelity / guidance runners work for trained
-simulators and closed-source baselines.
+simulators and prompted-model baselines.
 """
 
 from studentsim.baselines.azure_openai import AzureOpenAIClient
 from studentsim.baselines.base_qwen3 import build_base_qwen3_simulator
+from studentsim.baselines.llamacpp import LlamaCppClient
 from studentsim.baselines.llm_simulator import LLMClientSimulator
 from studentsim.baselines.maia2 import Maia2Simulator
 
 __all__ = [
     "AzureOpenAIClient",
+    "LlamaCppClient",
     "LLMClientSimulator",
     "Maia2Simulator",
     "build_base_qwen3_simulator",
