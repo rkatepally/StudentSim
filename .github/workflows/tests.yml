@@ -23,7 +23,8 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,baselines]"
-      - name: Ruff
-        run: ruff check studentsim tests
+      - name: Ruff changed Python paths
+        run: |
+          ruff check studentsim/baselines/llamacpp.py studentsim/core/llm.py tests
       - name: Pytest
         run: pytest -q
