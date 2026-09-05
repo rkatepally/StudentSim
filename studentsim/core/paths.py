@@ -15,8 +15,12 @@ STUDENTSIM_MODEL_CACHE         HuggingFace / ModelScope model cache             
 STUDENTSIM_RUN_DIR             Per-run output (logs, predictions, metrics)            ``./runs``
 STUDENTSIM_MS_SWIFT_BIN        ms-swift ``swift`` binary path                         ``shutil.which("swift")``
 STUDENTSIM_STOCKFISH_BIN       Stockfish binary path                                  ``shutil.which("stockfish")``
-AZURE_OPENAI_ENDPOINT          Azure OpenAI endpoint (e.g., for GPT-5.4 baseline)     ``None`` (required when calling Azure backends)
-AZURE_OPENAI_API_KEY           Azure OpenAI API key                                   ``None`` (required when calling Azure backends)
+STUDENTSIM_LLM_PROVIDER        API-style LLM backend (``llamacpp`` / ``azure_openai``) ``llamacpp``
+LLAMACPP_BASE_URL              Local generation OpenAI-compatible base URL             ``http://127.0.0.1:8081/v1``
+LLAMACPP_SCORING_BASE_URL      Base URL for calls requesting ``top_logprobs``          same as ``LLAMACPP_BASE_URL``
+LLAMACPP_MODEL                 Model alias sent to llama.cpp                           caller model / ``qwen38-code``
+AZURE_OPENAI_ENDPOINT          Azure OpenAI endpoint                                   ``None`` (Azure only)
+AZURE_OPENAI_API_KEY           Azure OpenAI API key                                    ``None`` (Azure only)
 ============================  =====================================================  ==================================================
 
 Absolute paths must not appear in any code file. If you catch one, replace it
