@@ -27,9 +27,33 @@ For example, to train and evaluate chess:
 pip install -e '.[chess,inference]'
 ```
 
-For the tutor RL phase, include `tutor_rl`. For the closed-model baselines, include `baselines`. The `tutor_rl` extra requires `libcairo` for board rendering.
+For the tutor RL phase, include `tutor_rl`. For prompted-model baselines and the local llama.cpp provider, include `baselines`. The `tutor_rl` extra requires `libcairo` for board rendering.
 
-By default, StudentSim finds its data, checkpoints, run outputs, model cache, and required binaries automatically, but you can point any of these elsewhere with the `STUDENTSIM_*` environment variables if needed. For steps that call a language model, you must set `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY`.
+By default, StudentSim finds its data, checkpoints, run outputs, model cache, and required binaries automatically, but you can point any of these elsewhere with the `STUDENTSIM_*` environment variables if needed. This fork defaults API-style LLM calls to a local OpenAI-compatible llama.cpp server. Azure OpenAI remains available when explicitly selected.
+
+### Local Qwen + llama.cpp (Windows / RTX 3090)
+
+The local-first path is designed for a Qwen3.8-27B GGUF served by `llama-server` at `http://127.0.0.1:8081/v1`, while StudentSim Stage-1/Stage-2 LoRA training continues through MS-SWIFT/PyTorch using the 4B base model.
+
+```powershell
+pip install -e ".[math,baselines,dev]"
+$env:STUDENTSIM_LLM_PROVIDER = "llamacpp"
+$env:LLAMACPP_BASE_URL = "http://127.0.0.1:8081/v1"
+$env:LLAMACPP_SCORING_BASE_URL = "http://127.0.0.1:8081/v1"
+$env:LLAMACPP_MODEL = "qwen38-code"
+```
+
+Start the normal MTP/speculative generation profile with:
+
+```powershell
+.\scripts\windows\start-qwen38-generation.ps1 `
+  -LlamaCppDir "C:\AI\llama-cpp-qwen38-b10566" `
+  -ModelDir "C:\AI\models\Qwen3.8-27B"
+```
+
+For fidelity runs that request `top_logprobs`, stop that server and use `start-qwen38-scoring.ps1`, which disables the draft model. A single RTX 3090 should not load both 27B server profiles simultaneously. Single-GPU LoRA configs are under `configs/training/rtx3090/`.
+
+See [`docs/local-qwen-rtx3090.md`](docs/local-qwen-rtx3090.md) for the complete Windows setup and training flow.
 
 ## Student simulator training
 
@@ -51,7 +75,7 @@ The three domains differ in what may be redistributed.
 python -m studentsim.data.l2.build
 ```
 
-**Math** ships as a build. The records are constructed from a FoundationalASSIST extract that must be obtained separately. Two of the three steps call a model and so incur API costs:
+**Math** ships as a build. The records are constructed from a FoundationalASSIST extract that must be obtained separately. Two of the three steps call a model; with the local llama.cpp provider these calls stay local instead of using a paid API:
 
 ```bash
 python -m studentsim.data.math.audit
@@ -69,7 +93,7 @@ Run one Stage-1 supervised fine-tuning job per domain:
 studentsim-train --config configs/training/stage1_<domain>.yaml
 ```
 
-This trains one LoRA adapter on records pooled across many students in that domain.
+This trains one LoRA adapter on records pooled across many students in that domain. On a single RTX 3090, start from `configs/training/rtx3090/stage1_<domain>.yaml` instead.
 
 ### 3. Stage 2 training
 
@@ -79,7 +103,7 @@ Run one Stage-2 job per student, continuing from the Stage-1 adapter:
 studentsim-train --config configs/training/stage2_<domain>.yaml --roster roster.json
 ```
 
-To train a single student instead of a roster, use `--student-id`. Stage 2 continues the Stage-1 adapter on that student's own records. It inherits the Stage-1 rank rather than starting a fresh adapter.
+To train a single student instead of a roster, use `--student-id`. Stage 2 continues the Stage-1 adapter on that student's own records. It inherits the Stage-1 rank rather than starting a fresh adapter. Single-RTX-3090 variants are under `configs/training/rtx3090/`.
 
 ### 4. Evaluation
 
@@ -118,7 +142,7 @@ studentsim-tutor-rl --config configs/tutor_rl/<name>.yaml
 The two shipped RL configs differ only in who plays the student.
 
 - `studentsim_reward.yaml`: the trained student simulator produces the revised move.
-- `prompted_student_reward.yaml`: a closed model prompted to play the student produces the revised move.
+- `prompted_student_reward.yaml`: a prompted language model plays the student and can now be served locally through llama.cpp or through Azure OpenAI.
 
 Everything else is held fixed between them: the tutor policy, the starting checkpoint, and the training settings.
 
